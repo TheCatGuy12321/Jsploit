@@ -1,16 +1,25 @@
 import cmd, os
 
-modules = { # name: [path, description, target]
+class mod_option():
+    def __init__(self, name: str, description: str, optional: bool):
+        self.name = name
+        self.desc = description
+        self.opt = optional
+
+    def __str__(self) -> str:
+        return (f"{self.name}    {self.desc}  (required: {self.opt})")
+
+modules = { # name: [path, description, options]
             "exploit":{
-                "test_exploit": "./modules/exploit/test_exploit.py",
-                "test_exploit2": "./modules/exploit/test_exploit2.py"
+                "test_exploit": ["./modules/exploit/test_exploit.py", "test", [mod_option("RHOST", "test", True)]],
+                "test_exploit2": ["./modules/exploit/test_exploit2.py", "test", [mod_option("RHOST", "test", True)]]
             },
             "listener":{
-                "test_listener": "./modules/listener/test_listener.py",
-                "aaaaa_listener": "./modules/listener/aaaaa_listener.py"
+                "test_listener": ["./modules/exploit/test_listener.py", "test", [mod_option("RHOST", "test", True)]],
+                "aaaaa_listener": ["./modules/exploit/aaaaa_listener.py", "test", [mod_option("RHOST", "test", True)]]
             },
             "shellcode":{
-                "test_shellcode": "./modules/shellcode/test_shellcode.py"
+                "test_shellcode": ["./modules/exploit/test_shellcode.py", "test", [mod_option("RHOST", "test", True)]]
             }
         }
 
@@ -23,16 +32,7 @@ def f_search(keyword, i_dict: dict): # function to search a nested dictionary
         if type(i[1]) == dict:
             f_search(keyword, i[1])
         else:
-            if keyword in i[0] or keyword in i[1]:
-                search_results[i[0]] = i[1]
-
-def f_search_type(keyword, i_dict: dict): # function to search a nested dictionary but only search the path (used to identify the modules that are a specific type)
-    global search_results
-    for i in i_dict.items():
-        if type(i[1]) == dict:
-            f_search_type(keyword, i[1])
-        else:
-            if keyword in i[1]:
+            if keyword in i[0] or keyword in i[1][0] or keyword in i[1][1]:
                 search_results[i[0]] = i[1]
 
 def f_search_use(keyword, i_dict: dict): # function to search a nested dictionary (used by use command)
@@ -41,7 +41,7 @@ def f_search_use(keyword, i_dict: dict): # function to search a nested dictionar
         if type(i[1]) == dict:
             f_search_use(keyword, i[1])
         else:
-            if keyword == i[0] or keyword == i[1]:
+            if keyword in i[0] or keyword in i[1][0] or keyword in i[1][1]:
                 search_results_use[i[0]] = i[1]
             
 
@@ -89,12 +89,12 @@ J\\_____/JJ\\______/FJ  _____/LJ__LJ\\______/FJ__L\\_____/
         for k in keys: temp[k] = search_results[k]
         search_results = temp
         print("""
-  #        NAME                          PATH
-  -        ----                          ----""")
+  #        NAME                          PATH                                                    DESCRIPTION
+  -        ----                          ----                                                    -----------""")
         i = 0
         for k,v in search_results.items():
             i += 1
-            print("  {num:<9}{name:30}{details}".format(num=i, name=k, details=v))
+            print("  {num:<9}{name:30}{path:56}{desc}".format(num=i, name=k, path=v[0], desc=v[1]))
     
     def do_show(self, keyword: str):
         'Show or list options/modules'
@@ -108,11 +108,11 @@ J\\_____/JJ\\______/FJ  _____/LJ__LJ\\______/FJ__L\\_____/
                 case 0 | 1: # show modules
                     search_results = {}
                     print("""
-  #        NAME                          PATH
-  -        ----                          ----""")
+  #        NAME                          PATH                                                    DESCRIPTION
+  -        ----                          ----                                                    -----------""")
                     temp = {}
                     keys = []
-                    f_search_type("", modules)
+                    f_search("", modules)
                     for k,v in search_results.items():
                         keys.append(k)
                     keys = sorted(keys) # sort alphabetical order
@@ -122,16 +122,16 @@ J\\_____/JJ\\______/FJ  _____/LJ__LJ\\______/FJ__L\\_____/
                     i = 0
                     for k,v in search_results.items():
                         i += 1
-                        print("  {num:<9}{name:30}{details}".format(num=i, name=k, details=v))
+                        print("  {num:<9}{name:30}{path:56}{desc}".format(num=i, name=k, path=v[0], desc=v[1]))
 
                 case 2 | 3: # show exploits
                     search_results = {}
                     print("""
-  #        NAME                          PATH
-  -        ----                          ----""")
+  #        NAME                          PATH                                                    DESCRIPTION
+  -        ----                          ----                                                    -----------""")
                     temp = {}
                     keys = []
-                    f_search_type("exploit/", modules)
+                    f_search("", modules["exploit"])
                     for k,v in search_results.items():
                         keys.append(k)
                     keys = sorted(keys) # sort alphabetical order
@@ -141,16 +141,16 @@ J\\_____/JJ\\______/FJ  _____/LJ__LJ\\______/FJ__L\\_____/
                     i = 0
                     for k,v in search_results.items():
                         i += 1
-                        print("  {num:<9}{name:30}{details}".format(num=i, name=k, details=v))
+                        print("  {num:<9}{name:30}{path:56}{desc}".format(num=i, name=k, path=v[0], desc=v[1]))
                 
                 case 4 | 5: # show listeners
                     search_results = {}
                     print("""
-  #        NAME                          PATH
-  -        ----                          ----""")
+  #        NAME                          PATH                                                    DESCRIPTION
+  -        ----                          ----                                                    -----------""")
                     temp = {}
                     keys = []
-                    f_search_type("listener/", modules)
+                    f_search("", modules["listener"])
                     for k,v in search_results.items():
                         keys.append(k)
                     keys = sorted(keys) # sort alphabetical order
@@ -160,16 +160,16 @@ J\\_____/JJ\\______/FJ  _____/LJ__LJ\\______/FJ__L\\_____/
                     i = 0
                     for k,v in search_results.items():
                         i += 1
-                        print("  {num:<9}{name:30}{details}".format(num=i, name=k, details=v))
+                        print("  {num:<9}{name:30}{path:56}{desc}".format(num=i, name=k, path=v[0], desc=v[1]))
                 
                 case 6 | 7: # show shellcodes
                     search_results = {}
                     print("""
-  #        NAME                          PATH
-  -        ----                          ----""")
+  #        NAME                          PATH                                                    DESCRIPTION
+  -        ----                          ----                                                    -----------""")
                     temp = {}
                     keys = []
-                    f_search_type("shellcode/", modules)
+                    f_search("", modules["shellcode"])
                     for k,v in search_results.items():
                         keys.append(k)
                     keys = sorted(keys) # sort alphabetical order
@@ -179,9 +179,9 @@ J\\_____/JJ\\______/FJ  _____/LJ__LJ\\______/FJ__L\\_____/
                     i = 0
                     for k,v in search_results.items():
                         i += 1
-                        print("  {num:<9}{name:30}{details}".format(num=i, name=k, details=v))
+                        print("  {num:<9}{name:30}{path:56}{desc}".format(num=i, name=k, path=v[0], desc=v[1]))
                 
-                case 8 | 9: # show options to a module
+                case 8 | 9: # show options to a module TODO:add options
                     pass
         print()
     
